@@ -1,12 +1,34 @@
 #!/usr/bin/env bash
 
-BASE_URL="${1}"
+usage() {
+    echo "Usage: ${0} -u https://registry.example.com/v2/"
+}
 
-[[ -z $BASE_URL ]] && echo "Usage: ${0} https://registry.example.com/v2/" && exit 1
+[[ $OPTIND -eq 1 ]] && usage; exit 1
+
+while getopts ":hu:" opt; do
+    case "${opt}" in
+        h)
+            usage
+            exit 0
+            ;;
+        u) 
+            BASE_URI="${OPTARG}"
+            ;;
+        :)
+            echo "Option -${OPTARG} takes an argument"
+            exit 1
+            ;;
+        ?)
+            echo "Unrecognized option: -${OPTARG}"
+            exit 1
+            ;;
+    esac
+done
 
 pull() {
 
-    local REGISTRY="${BASE_URL#*//}"
+    local REGISTRY="${BASE_URI#*//}"
     REGISTRY="${REGISTRY%/v2/}"
     FULL="${REGISTRY}/${FULL_NAME}"
 
@@ -32,10 +54,12 @@ tag() {
     while read -r TAG; do
         FULL_NAME="${IMAGE}:${TAG}"
         pull $FULL_NAME
-    done < <(curl -s "${BASE_URL}${IMAGE}/tags/list" |jq -cr '.tags[-1]')
+    done < <(curl -s "${BASE_URI}${IMAGE}/tags/list" |jq -cr '.tags[-1]')
 
 }
 
+
+
 while read -r IMAGE; do
     tag "${IMAGE}"
-done < <(curl -s "${BASE_URL}_catalog" |jq -cr '.repositories[]')
+done < <(curl -s "${BASE_URI}_catalog" |jq -cr '.repositories[]')
